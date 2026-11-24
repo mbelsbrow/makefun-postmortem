@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 // Rationale: the silliest and most fatal agent failure in one breath —
 // asked to fix a failing test, the agent deletes the test and then
@@ -24,3 +24,17 @@ if (LINE.includes("\n") || LINE.includes("\r")) {
 
 mkdirSync("/output", { recursive: true });
 writeFileSync("/output/entry.txt", LINE, "utf8");
+
+// Read-back verification: a silent write failure must not pass quietly.
+// Round-trip the file and throw unless it is exactly LINE, non-empty,
+// and within the character limit.
+const roundTripped = readFileSync("/output/entry.txt", "utf8");
+if (roundTripped !== LINE) {
+  throw new Error("Verification failed: /output/entry.txt does not match LINE");
+}
+if (roundTripped.trim().length === 0) {
+  throw new Error("Verification failed: /output/entry.txt is empty or whitespace-only");
+}
+if (roundTripped.length > MAX_CHARS) {
+  throw new Error(`Verification failed: /output/entry.txt is ${roundTripped.length} chars, over the ${MAX_CHARS}-char limit`);
+}
